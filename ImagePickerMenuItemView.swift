@@ -104,7 +104,7 @@ class ImagePickerMenuItemView: NSView {
      */
     /* Custom selectedIndex property setter so that we can be sure to redraw when the image URLs change. Actually, we need to rebuild our thumbnail images, but we don't do that here because we may not even be visible at the moment. Instead, we mark an internal variable noting that the thumbnails need to be updated. see -viewWillDraw.
      */
-    public var imageUrls: [URL] {
+    @objc public var imageUrls: [URL] {
         get {
             return _imageUrls
         }
@@ -117,7 +117,7 @@ class ImagePickerMenuItemView: NSView {
     }
     /* We must create our own selectedImageUrl property getter as there is no underlying member variable to synthesize to. Simply, return URL from _imageUrls at the selected index.
      */
-    func selectedImageUrl() -> URL? {
+    @objc public var selectedImageUrl: URL? {
         var selectedURL: URL? = nil
         let index: Int = selectedIndex
         if index >= 0 && index < Int(_imageUrls.count) {
@@ -264,20 +264,23 @@ class ImagePickerMenuItemView: NSView {
     }
     /* The mouse is now over one of our child image views. Update selection.
      */
-    override func mouseEntered(with event: NSEvent?) {
+    override func mouseEntered(with event: NSEvent) {
         // The index of the image view is stored in the user data.
-        // TODO: FAIL/CRASH!!
-        let index = ((event?.userData as? [AnyHashable: Any])?[kTrackerKey] as? Int) ?? 0
-        selectedIndex = index
+        if let userData = event.trackingArea?.userInfo as? [String: Int] {
+            selectedIndex = userData["kTrackerKey"]!
+        }
+        else {
+            selectedIndex = 0
+        }
     }
     /* The mouse has left one of our child image views. Set the selection to no selection.
      */
-    override func mouseExited(with event: NSEvent?) {
+    override func mouseExited(with event: NSEvent) {
         selectedIndex = kNoSelection
     }
     /* The user released the mouse button. Send the action and let the target ask for the selection. Notice that there is no mouseDown: implementation. This is because the user may have held the mouse down as the menu popped up. Or the user may click on this view, but drag into another menu item. That menu item needs to be able to start tracking the mouse. Therefore, we only keep track of our selection via the tracking areas and send our action to our target when the user releases the mouse button inside this view.
      */
-    override func mouseUp(with event: NSEvent?) {
+    override func mouseUp(with event: NSEvent) {
         sendAction()
     }
     // MARK: -

@@ -99,7 +99,6 @@ class CustomMenusAppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelega
                         // need a blank entry to start with
                         viewController.representedObject = pickerMenuData
                         // Bind the custom view to the image URLs array.
-                        // TODO: FAIL/CRASH!!
                         viewController.view.bind(NSBindingName("imageUrls"), to: viewController, withKeyPath: "representedObject.imageUrls", options: nil)
                         /* selectedImageUrl from the view is read only, so bind the data dictinary to the selectedImageUrl instead of the other way around.
                          */
@@ -149,11 +148,6 @@ class CustomMenusAppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelega
     func applicationDidFinishLaunching(_ aNotification: Notification) {
         setBaseURL(URL(fileURLWithPath: kDesktopPicturesPath))
         setupImagesMenu()
-    }
-
-    func applicationWillTerminate(_ aNotification: Notification) {
-        // Insert code here to tear down your application
-        print("will terminate")
     }
 
     // MARK: -

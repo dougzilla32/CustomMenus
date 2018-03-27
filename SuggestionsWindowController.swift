@@ -127,14 +127,11 @@ class SuggestionsWindowController: NSWindowController {
             if mutableEntry[kSuggestionImage] == nil {
                 // Load the image in an operation block so that the window pops up immediatly
                 ITESharedOperationQueue()?.addOperation({(_: Void) -> Void in
-                    let fileURL = mutableEntry[kSuggestionImageURL] as? URL
-                    if fileURL != nil {
-                        let thumbnailImage = NSImage.iteThumbnailImage(withContentsOf: fileURL, width: CGFloat(kThumbnailWidth))
-                        if thumbnailImage != nil {
-                            OperationQueue.main.addOperation({(_: Void) -> Void in
-                                mutableEntry[kSuggestionImage] = thumbnailImage
-                            })
-                        }
+                    if let fileURL = mutableEntry[kSuggestionImageURL] as? URL,
+                        let thumbnailImage = NSImage.iteThumbnailImage(withContentsOf: fileURL, width: CGFloat(kThumbnailWidth)) {
+                        OperationQueue.main.addOperation({(_: Void) -> Void in
+                            mutableEntry[kSuggestionImage] = thumbnailImage
+                        })
                     }
                 })
             }
@@ -311,20 +308,23 @@ class SuggestionsWindowController: NSWindowController {
     // Creates suggestion views from suggestionprototype.xib for every suggestion and resize the suggestion window accordingly. Also creates a thumbnail image on a backgroung aue.
     /* The mouse is now over one of our child image views. Update selection and send action.
      */
-    override func mouseEntered(with event: NSEvent?) {
-        // TODO: FAIL/CRASH!!
-        let trackerData = event?.userData as? [AnyHashable: Any]
-        let view = trackerData != nil ? trackerData![kTrackerKey] as? HighlightingView : nil
+    override func mouseEntered(with event: NSEvent) {
+        let view: NSView?
+        if let userData = event.trackingArea?.userInfo as? [String: NSView] {
+            view = userData["kTrackerKey"]!
+        } else {
+            view = nil
+        }
         userSetSelectedView(view)
     }
     /* The mouse has left one of our child image views. Set the selection to no selection and send action
      */
-    override func mouseExited(with event: NSEvent?) {
+    override func mouseExited(with event: NSEvent) {
         userSetSelectedView(nil)
     }
     /* The user released the mouse button. Force the parent text field to send its return action. Notice that there is no mouseDown: implementation. That is because the user may hold the mouse down and drag into another view.
      */
-    override func mouseUp(with theEvent: NSEvent?) {
+    override func mouseUp(with theEvent: NSEvent) {
         parentTextField?.validateEditing()
         parentTextField?.abortEditing()
         parentTextField?.sendAction(parentTextField?.action, to: parentTextField?.target)
