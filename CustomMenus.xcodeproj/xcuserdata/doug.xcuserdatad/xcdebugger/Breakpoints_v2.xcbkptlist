@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Bucket
+   type = "1"
+   version = "2.0">
+   <Breakpoints>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "main.swift"
+            timestampString = "543818231.628765"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "10"
+            endingLineNumber = "10"
+            landmarkName = "unknown"
+            landmarkType = "0">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "CustomMenusAppDelegate.swift"
+            timestampString = "543826610.464379"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "148"
+            endingLineNumber = "148"
+            landmarkName = "CustomMenusAppDelegate"
+            landmarkType = "3">
+            <Locations>
+               <Location
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "CustomMenus.CustomMenusAppDelegate.applicationDidFinishLaunching(Foundation.Notification) -&gt; ()"
+                  moduleName = "CustomMenus"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/doug/Desktop/Dropbox/Xcode%20Projects/CustomMenus/CustomMenusAppDelegate.swift"
+                  timestampString = "543820513.073959"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "148"
+                  endingLineNumber = "148"
+                  offsetFromSymbolStart = "43">
+               </Location>
+               <Location
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "@objc CustomMenus.CustomMenusAppDelegate.applicationDidFinishLaunching(Foundation.Notification) -&gt; ()"
+                  moduleName = "CustomMenus"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/doug/Desktop/Dropbox/Xcode%20Projects/CustomMenus/CustomMenusAppDelegate.swift"
+                  timestampString = "543820513.13597"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "148"
+                  endingLineNumber = "148"
+                  offsetFromSymbolStart = "80">
+               </Location>
+            </Locations>
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "CustomMenusAppDelegate.swift"
+            timestampString = "543826610.464473"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "154"
+            endingLineNumber = "154"
+            landmarkName = "applicationWillTerminate(_:)"
+            landmarkType = "7">
+            <Locations>
+               <Location
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "CustomMenus.CustomMenusAppDelegate.applicationWillTerminate(Foundation.Notification) -&gt; ()"
+                  moduleName = "CustomMenus"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/doug/Desktop/Dropbox/Xcode%20Projects/CustomMenus/CustomMenusAppDelegate.swift"
+                  timestampString = "543820513.150443"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "154"
+                  endingLineNumber = "154"
+                  offsetFromSymbolStart = "116">
+               </Location>
+               <Location
+                  shouldBeEnabled = "No"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "@objc CustomMenus.CustomMenusAppDelegate.applicationWillTerminate(Foundation.Notification) -&gt; ()"
+                  moduleName = "CustomMenus"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/doug/Desktop/Dropbox/Xcode%20Projects/CustomMenus/CustomMenusAppDelegate.swift"
+                  timestampString = "543820513.154829"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "154"
+                  endingLineNumber = "154"
+                  offsetFromSymbolStart = "147">
+               </Location>
+            </Locations>
+         </BreakpointContent>
+      </BreakpointProxy>
+   </Breakpoints>
+</Bucket>
