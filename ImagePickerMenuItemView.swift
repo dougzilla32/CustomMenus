@@ -57,7 +57,7 @@ class ImagePickerMenuItemView: NSView {
     private var spinners = [NSProgressIndicator]()
     private var _trackingAreas = [NSTrackingArea]()
     private var thumbnailsNeedUpdate = false
-    
+
     /* declare the selectedIndex property in an anonymous category since it is a private property
      */
     private var _selectedIndex: Int = 0
@@ -83,11 +83,11 @@ class ImagePickerMenuItemView: NSView {
     }
     override init(frame: NSRect) {
         super.init(frame: frame)
-        
+
         selectedIndex = kNoSelection
-        
+
     }
-    
+
     required init?(coder decoder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }

@@ -88,7 +88,7 @@ class SuggestionsWindowController: NSWindowController {
             }
         }
         trackingAreas.removeAll()
-        
+
         /* Iterate througn each suggestion creating a view for each entry.
          */
         /* The width of each suggestion view should match the width of the window. The height is determined by the view's height set in IB.

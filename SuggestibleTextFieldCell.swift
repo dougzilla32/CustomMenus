@@ -51,7 +51,7 @@ class SuggestibleTextFieldCell: NSTextFieldCell {
             self.textColor = NSColor.white
         }
         super.draw(withFrame: cellFrame, in: controlView)
-        
+
         self.textColor = textColor
     }
     // MARK: -
@@ -60,7 +60,7 @@ class SuggestibleTextFieldCell: NSTextFieldCell {
     override public func isAccessibilityEnabled() -> Bool {
         return true
     }
-    
+
     /* The search text field in the MainMenu.xib has the class for its cell set to this class so that it will report the suggestions window as one of its accessibility children when the suggestions window is present.
      */
     override func accessibilityChildren() -> [Any]? {
