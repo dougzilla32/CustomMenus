@@ -21,28 +21,28 @@ OS X 10.6.x or later
 ===========================================================================
 PACKAGING LIST:
 
-SuggestionsWindowController.{h,m}
+SuggestionsWindowController.swift
 The controller for the suggestions popup window. This class handles creating, displaying, and event tracking of the suggestion popup window.
 
-RoundedCornersView.{h,m}
+RoundedCornersView.swift
 A view that draws a rounded rect with the window background. It is used to draw the background for the suggestions window and expose the suggestions to accessibility.
 
-SuggestionsWindow.{h,m}
+SuggestionsWindow.swift
 A custom window that acts as a popup menu of sorts.  Since this isn't semantically a window, we ignore it for accessibility purposes. However, we need to inform accessibility of the logical relationship between this window and it parent UI element in the parent window.
 
-HighlightingView.{h,m}
+HighlightingView.swift
 A simple view that draws menu-like highlighting and exposes its containing views as a suggestion for accessibility.
 
-TextFieldCell.{h,m}
+TextFieldCell.swift
 A custom text field cell to perform two tasks. Draw with white text on a dark background, and expose any associated suggestion window as our accessibility child.
 
-ImagePickerMenuItemView.{h,m}
+ImagePickerMenuItemView.swift
 A custom view that is used as an NSMenuItem. This view contains up to 4 images and the logic to track the selection of one of those images.
 
-CustomMenusAppDelegate.{h,m}
+CustomMenusAppDelegate.swift
 This class is responsible for two major activities. It sets up the images in the popup menu (via a custom view) and responds to the menu actions. Also, it supplies the suggestions for the search text field and responds to suggestion selection changes and text field editing.
 
-NSImageThumbnailExtensions.{h,m}
+NSImageThumbnailExtensions.swift
 A category on NSImage to create a thumbnail sized NSImage from an image URL.
 
 ===========================================================================
