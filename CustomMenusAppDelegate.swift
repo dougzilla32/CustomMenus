@@ -239,7 +239,9 @@ class CustomMenusAppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelega
             }
             var localizedName: String?
             try? localizedName = ((file.resourceValues(forKeys: [.localizedNameKey]).allValues.first?.value ?? "") as? String)
-            if localizedName != nil && (localizedName!.hasPrefix(text ?? "") || localizedName!.uppercased().hasPrefix(text?.uppercased() ?? "")) {
+            if text != nil && text != "" && localizedName != nil
+                && (localizedName!.hasPrefix(text ?? "")
+                    || localizedName!.uppercased().hasPrefix(text?.uppercased() ?? "")) {
                 let entry: [String: Any] = [
                     kSuggestionLabel: localizedName!,
                     kSuggestionDetailedLabel: file.path,
@@ -266,7 +268,7 @@ class CustomMenusAppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelega
                 let suggestion = suggestions![0]
                 suggestedURL = suggestion[kSuggestionImageURL] as? URL
                 updateFieldEditor(fieldEditor, withSuggestion: suggestion[kSuggestionLabel] as? String)
-                suggestionsController?.suggestions = suggestions!
+                suggestionsController?.setSuggestions(suggestions!)
                 if !(suggestionsController?.window?.isVisible ?? false) {
                     suggestionsController?.begin(for: (control as? NSTextField))
                 }

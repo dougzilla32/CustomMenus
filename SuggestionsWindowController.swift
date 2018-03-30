@@ -50,7 +50,7 @@ class SuggestionsWindowController: NSWindowController {
     var action: Selector?
     var target: Any?
     private var parentTextField: NSTextField?
-    var suggestions = [[String: Any]]()
+    private var suggestions = [[String: Any]]()
     private var viewControllers = [NSViewController]()
     private var trackingAreas = [AnyHashable]()
     private var needsLayoutUpdate = false
@@ -128,7 +128,7 @@ class SuggestionsWindowController: NSWindowController {
                 // Load the image in an operation block so that the window pops up immediatly
                 ITESharedOperationQueue()?.addOperation({(_: Void) -> Void in
                     if let fileURL = mutableEntry[kSuggestionImageURL] as? URL,
-                        let thumbnailImage = NSImage.iteThumbnailImage(withContentsOf: fileURL, width: CGFloat(kThumbnailWidth)) {
+                        let thumbnailImage = NSImage.iteThumbnailImage(withContentsOf: fileURL, width: self.kThumbnailWidth) {
                         OperationQueue.main.addOperation({(_: Void) -> Void in
                             mutableEntry[kSuggestionImage] = thumbnailImage
                         })
@@ -311,7 +311,7 @@ class SuggestionsWindowController: NSWindowController {
     override func mouseEntered(with event: NSEvent) {
         let view: NSView?
         if let userData = event.trackingArea?.userInfo as? [String: NSView] {
-            view = userData["kTrackerKey"]!
+            view = userData[kTrackerKey]!
         } else {
             view = nil
         }
@@ -366,6 +366,7 @@ class SuggestionsWindowController: NSWindowController {
             userSetSelectedView(previousView)
         }
     }
+
+    let kTrackerKey = "whichImageView"
+    let kThumbnailWidth: CGFloat = 24.0
 }
-let kTrackerKey = "whichImageView"
-let kThumbnailWidth = 24.0

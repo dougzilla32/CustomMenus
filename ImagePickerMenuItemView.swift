@@ -267,9 +267,8 @@ class ImagePickerMenuItemView: NSView {
     override func mouseEntered(with event: NSEvent) {
         // The index of the image view is stored in the user data.
         if let userData = event.trackingArea?.userInfo as? [String: Int] {
-            selectedIndex = userData["kTrackerKey"]!
-        }
-        else {
+            selectedIndex = userData[kTrackerKey]!
+        } else {
             selectedIndex = 0
         }
     }
