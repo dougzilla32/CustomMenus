@@ -1,5 +1,17 @@
 ### CustomMenus ###
 
+This is a Swift port of the original "CustomMenus" Objective-C sample project from Apple:
+
+    https://developer.apple.com/library/content/samplecode/CustomMenus
+
+From the original web site:
+
+"This sample demonstrates several implementations of custom menus, including a popup menu with a custom view, and a custom 'suggestions' popup window that behaves like a popup menu and properly handles user interactions accordingly. This sample was written as part of Session 145, 'Key Event Handling in Cocoa Applications', for WWDC 2010."
+
+I ported the code to use as a completions menu for a search text field.
+
+The port introduced a bug where the thumbnail images in the drop-down menu are not displayed.  The problem has to do with binding the model's "representedObject.image" to the value for the NSImageView (in suggestionprototype.xib).  This broke with the port to Swift, and I've been unabled to determine the cause.  If anyone can figure out the solution I'd be happy to hear about it and incorporate the fix!
+
 ===========================================================================
 DESCRIPTION:
 
