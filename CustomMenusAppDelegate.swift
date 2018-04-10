@@ -282,13 +282,15 @@ class CustomMenusAppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelega
     /* In interface builder, we set this class object as the delegate for the search text field. When the user starts editing the text field, this method is called. This is an opportune time to display the initial suggestions. 
      */
     override func controlTextDidBeginEditing(_ notification: Notification?) {
-        // We keep the suggestionsController around, but lazely allocate it the first time it is needed.
-        if suggestionsController == nil {
-            suggestionsController = SuggestionsWindowController()
-            suggestionsController?.target = self
-            suggestionsController?.action = #selector(CustomMenusAppDelegate.update(withSelectedSuggestion:))
+        if !isSkipNextSuggestion {
+            // We keep the suggestionsController around, but lazely allocate it the first time it is needed.
+            if suggestionsController == nil {
+                suggestionsController = SuggestionsWindowController()
+                suggestionsController?.target = self
+                suggestionsController?.action = #selector(CustomMenusAppDelegate.update(withSelectedSuggestion:))
+            }
+            updateSuggestions(from: notification?.object as? NSControl)
         }
-        updateSuggestions(from: notification?.object as? NSControl)
     }
     /* The field editor's text may have changed for a number of reasons. Generally, we should update the suggestions window with the new suggestions. However, in some cases (the user deletes characters) we cancel the suggestions window.
      */
@@ -327,7 +329,13 @@ class CustomMenusAppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDelega
         if commandSelector == #selector(NSResponder.deleteForward(_:)) || commandSelector == #selector(NSResponder.deleteBackward(_:)) {
             /* The user is deleting the highlighted portion of the suggestion or more. Return NO so that the field editor performs the deletion. The field editor will then call -controlTextDidChange:. We don't want to provide a new set of suggestions as that will put back the characters the user just deleted. Instead, set skipNextSuggestion to YES which will cause -controlTextDidChange: to cancel the suggestions window. (see -controlTextDidChange: above)
              */
-            isSkipNextSuggestion = true
+            let insertionRange = textView.selectedRanges[0].rangeValue
+            if commandSelector == #selector(NSResponder.deleteBackward(_:)) {
+                isSkipNextSuggestion = (insertionRange.location != 0 || insertionRange.length > 0)
+            }
+            else {
+                isSkipNextSuggestion = (insertionRange.location != textView.string.count || insertionRange.length > 0)
+            }
             return false
         }
         if commandSelector == #selector(NSResponder.complete(_:)) {

@@ -62,7 +62,8 @@ class RoundedCornersView: NSView {
         NSColor.windowBackgroundColor.setFill()
         borderPath.fill()
     }
-    func isFlipped() -> Bool {
+    
+    override var isFlipped: Bool {
         return true
     }
 
