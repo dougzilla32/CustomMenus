@@ -75,13 +75,14 @@ extension NSImage {
         return thumbnailImage
     }
 }
+
 /* A shared operation que that is used to generate thumbnails in the background.
  */
 func ITESharedOperationQueue() -> OperationQueue? {
-    var _ITEImageSharedOperationQueue: OperationQueue? = nil
-    if _ITEImageSharedOperationQueue == nil {
-        _ITEImageSharedOperationQueue = OperationQueue()
-        _ITEImageSharedOperationQueue?.maxConcurrentOperationCount = OperationQueue.defaultMaxConcurrentOperationCount
+    var ITEImageSharedOperationQueue: OperationQueue? = nil
+    if ITEImageSharedOperationQueue == nil {
+        ITEImageSharedOperationQueue = OperationQueue()
+        ITEImageSharedOperationQueue?.maxConcurrentOperationCount = OperationQueue.defaultMaxConcurrentOperationCount
     }
-    return _ITEImageSharedOperationQueue
+    return ITEImageSharedOperationQueue
 }

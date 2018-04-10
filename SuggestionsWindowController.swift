@@ -41,10 +41,13 @@
  */
 import Cocoa
 
-var kSuggestionImage = "image"
-var kSuggestionImageURL = "imageUrl"
-var kSuggestionLabel = "label"
-var kSuggestionDetailedLabel = "detailedLabel"
+let kTrackerKey = "whichImageView"
+let kThumbnailWidth: CGFloat = 24.0
+
+let kSuggestionImage = "image"
+let kSuggestionImageURL = "imageUrl"
+let kSuggestionLabel = "label"
+let kSuggestionDetailedLabel = "detailedLabel"
 
 class SuggestionsWindowController: NSWindowController {
     var action: Selector?
@@ -56,23 +59,181 @@ class SuggestionsWindowController: NSWindowController {
     private var needsLayoutUpdate = false
     private var localMouseDownEventMonitor: Any?
     private var lostFocusObserver: Any?
-    private var _selectedView: NSView?
-    /* declare the these properties in an anonymous category since they are private
+
+    init() {
+        let contentRec = NSRect(x: 0, y: 0, width: 20, height: 20)
+        let window = SuggestionsWindow(contentRect: contentRec, defer: true)
+        super.init(window: window)
+
+        // SuggestionsWindow is a transparent window, create RoundedCornersView and set it as the content view to draw a menu like window.
+        let contentView = RoundedCornersView(frame: contentRec)
+        window.contentView = contentView
+        contentView.autoresizesSubviews = false
+        needsLayoutUpdate = true
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+    }
+
+    /* Custom selectedView property setter so that we can set the highlighted property of the old and new selected views.
      */
-    var isNeedsLayoutUpdate = false
-    var selectedView: NSView? {
-        get {
-            return _selectedView
-        }
-        set(view) {
-            if _selectedView != view {
-                (_selectedView as? HighlightingView)?.setHighlighted(false)
-                _selectedView = view
+    private var selectedView: NSView? {
+        didSet {
+            if selectedView != oldValue {
+                (oldValue as? HighlightingView)?.setHighlighted(false)
             }
-            (_selectedView as? HighlightingView)?.setHighlighted(true)
+            (selectedView as? HighlightingView)?.setHighlighted(true)
         }
     }
-    // private helper methods
+
+    /* Set selected view and send action
+     */
+    func userSetSelectedView(_ view: NSView?) {
+        selectedView = view
+        NSApp.sendAction(action!, to: target, from: self)
+    }
+
+    /* Position and lay out the suggestions window, set up auto cancelling tracking, and wires up the logical relationship for accessibility.
+     */
+    func begin(for parentTextField: NSTextField?) {
+        let suggestionWindow: NSWindow? = window
+        let parentWindow: NSWindow? = parentTextField?.window
+        let parentFrame: NSRect? = parentTextField?.frame
+        var frame: NSRect? = suggestionWindow?.frame
+        frame?.size.width = (parentFrame?.size.width)!
+        // Place the suggestion window just underneath the text field and make it the same width as th text field.
+        var location = parentTextField?.superview?.convert(parentFrame?.origin ?? NSPoint.zero, to: nil)
+        location = parentWindow?.convertToScreen(NSRect(x: location!.x, y: location!.y, width: 0, height: 0)).origin
+        location?.y -= 2.0
+        // nudge the suggestion window down so it doesn't overlapp the parent view
+        suggestionWindow?.setFrame(frame ?? NSRect.zero, display: false)
+        suggestionWindow?.setFrameTopLeftPoint(location ?? NSPoint.zero)
+        layoutSuggestions()
+        // The height of the window will be adjusted in -layoutSuggestions.
+        // add the suggestion window as a child window so that it plays nice with Expose
+        if let aWindow = suggestionWindow {
+            parentWindow?.addChildWindow(aWindow, ordered: .above)
+        }
+        // keep track of the parent text field in case we need to commit or abort editing.
+        self.parentTextField = parentTextField
+        // The window must know its accessibility parent, the control must know the window one of its accessibility children
+        // Note that views (controls especially) are often ignored, so we want the unignored descendant - usually a cell
+        // Finally, post that we have created the unignored decendant of the suggestions window
+        //        let unignoredAccessibilityDescendant = NSAccessibilityUnignoredDescendant(parentTextField!)
+        //        (suggestionWindow as? SuggestionsWindow)?.parentElement = unignoredAccessibilityDescendant
+        //        if unignoredAccessibilityDescendant.responds(to: Selector("setSuggestionsWindow:")) {
+        //            unignoredAccessibilityDescendant.suggestionsWindow = suggestionWindow
+        //        }
+        //      NSAccessibilityPostNotification(NSAccessibilityUnignoredDescendant(suggestionWindow), .created)
+        // setup auto cancellation if the user clicks outside the suggestion window and parent text field. Note: this is a local event monitor and will only catch clicks in windows that belong to this application. We use another technique below to catch clicks in other application windows.
+        localMouseDownEventMonitor = NSEvent.addLocalMonitorForEvents(matching: [NSEvent.EventTypeMask.leftMouseDown, NSEvent.EventTypeMask.rightMouseDown, NSEvent.EventTypeMask.otherMouseDown], handler: {(_ event: NSEvent) -> NSEvent? in
+            // If the mouse event is in the suggestion window, then there is nothing to do.
+            var event: NSEvent! = event
+            if event.window != suggestionWindow {
+                if event.window == parentWindow {
+                    /* Clicks in the parent window should either be in the parent text field or dismiss the suggestions window. We want clicks to occur in the parent text field so that the user can move the caret or select the search text.
+                     
+                     Use hit testing to determine if the click is in the parent text field. Note: when editing an NSTextField, there is a field editor that covers the text field that is performing the actual editing. Therefore, we need to check for the field editor when doing hit testing.
+                     */
+                    let contentView: NSView? = parentWindow?.contentView
+                    let locationTest: NSPoint? = contentView?.convert(event.locationInWindow, from: nil)
+                    let hitView: NSView? = contentView?.hitTest(locationTest ?? NSPoint.zero)
+                    let fieldEditor: NSText? = parentTextField?.currentEditor()
+                    if hitView != parentTextField && ((fieldEditor != nil) && hitView != fieldEditor) {
+                        // Since the click is not in the parent text field, return nil, so the parent window does not try to process it, and cancel the suggestion window.
+                        event = nil
+                        self.cancelSuggestions()
+                    }
+                } else {
+                    // Not in the suggestion window, and not in the parent window. This must be another window or palette for this application.
+                    self.cancelSuggestions()
+                }
+            }
+            return event
+        })
+        // as per the documentation, do not retain event monitors.
+        // We also need to auto cancel when the window loses key status. This may be done via a mouse click in another window, or via the keyboard (cmd-~ or cmd-tab), or a notificaiton. Observing NSWindowDidResignKeyNotification catches all of these cases and the mouse down event monitor catches the other cases.
+        lostFocusObserver = NotificationCenter.default.addObserver(forName: NSWindow.didResignKeyNotification, object: parentWindow, queue: nil, using: {(_ arg1: Notification) -> Void in
+            // lost key status, cancel the suggestion window
+            self.cancelSuggestions()
+        })
+    }
+
+    /* Order out the suggestion window, disconnect the accessibility logical relationship and dismantle any observers for auto cancel.
+     Note: It is safe to call this method even if the suggestions window is not currently visible.
+     */
+    func cancelSuggestions() {
+        let suggestionWindow: NSWindow? = window
+        if suggestionWindow?.isVisible ?? false {
+            // Remove the suggestion window from parent window's child window collection before ordering out or the parent window will get ordered out with the suggestion window.
+            if let aWindow = suggestionWindow {
+                suggestionWindow?.parent?.removeChildWindow(aWindow)
+            }
+            suggestionWindow?.orderOut(nil)
+            // Disconnect the accessibility parent/child relationship
+            //            (suggestionWindow as? SuggestionsWindow)?.parentElement.suggestionsWindow = nil
+            (suggestionWindow as? SuggestionsWindow)?.parentElement = nil
+        }
+        // dismantle any observers for auto cancel
+        if lostFocusObserver != nil {
+            NotificationCenter.default.removeObserver(lostFocusObserver!)
+            lostFocusObserver = nil
+        }
+        if localMouseDownEventMonitor != nil {
+            NSEvent.removeMonitor(localMouseDownEventMonitor!)
+            localMouseDownEventMonitor = nil
+        }
+    }
+
+    /* Update the array of suggestions. The array should consist of NSDictionaries each containing the following keys:
+     kSuggestionImageURL - The URL to an image file
+     kSuggestionLabel - The main suggestion string
+     kSuggestionDetailedLabel - A longer string that provides more detail about the suggestion
+     kSuggestionImage - [optional] The image to show in the suggestion thumbnail. If this key is not provided, a thumbnail image will be created in a background que.
+     */
+    func setSuggestions(_ suggestions: [[String: Any]]?) {
+        self.suggestions = suggestions!
+        // We only need to update the layout if the window is currently visible.
+        if (window?.isVisible)! {
+            layoutSuggestions()
+        }
+    }
+
+    /* Returns the dictionary of the currently selected suggestion.
+     */
+    func selectedSuggestion() -> [String: Any]? {
+        var suggestion: Any? = nil
+        // Find the currently selected view's controller (if there is one) and return the representedObject which is the NSMutableDictionary that was passed in via -setSuggestions:
+        let selectedView: NSView? = self.selectedView
+        for viewController: NSViewController in viewControllers where selectedView == viewController.view {
+            suggestion = viewController.representedObject
+            break
+        }
+        return suggestion as? [String: Any]
+    }
+
+    // MARK: -
+    // MARK: Mouse Tracking
+    /* Mouse tracking is easily accomplished via tracking areas. We setup a tracking area for suggestion view and watch as the mouse moves in and out of those tracking areas.
+     */
+    /* Properly creates a tracking area for an image view.
+     */
+    func trackingArea(for view: NSView?) -> Any? {
+        // make tracking data (to be stored in NSTrackingArea's userInfo) so we can later determine the imageView without hit testing
+        var trackerData: [AnyHashable: Any]? = nil
+        if let aView = view {
+            trackerData = [
+                kTrackerKey: aView
+            ]
+        }
+        let trackingRect: NSRect = window!.contentView!.convert(view?.bounds ?? CGRect.zero, from: view)
+        let trackingOptions: NSTrackingArea.Options = [.enabledDuringMouseDrag, .mouseEnteredAndExited, .activeInActiveApp]
+        let trackingArea = NSTrackingArea(rect: trackingRect, options: trackingOptions, owner: self, userInfo: trackerData)
+        return trackingArea
+    }
+
+    // Creates suggestion views from suggestionprototype.xib for every suggestion and resize the suggestion window accordingly. Also creates a thumbnail image on a backgroung aue.
     private func layoutSuggestions() {
         let window: NSWindow? = self.window
         let contentView = window?.contentView as? RoundedCornersView
@@ -128,7 +289,7 @@ class SuggestionsWindowController: NSWindowController {
                 // Load the image in an operation block so that the window pops up immediatly
                 ITESharedOperationQueue()?.addOperation({(_: Void) -> Void in
                     if let fileURL = mutableEntry[kSuggestionImageURL] as? URL,
-                        let thumbnailImage = NSImage.iteThumbnailImage(withContentsOf: fileURL, width: self.kThumbnailWidth) {
+                        let thumbnailImage = NSImage.iteThumbnailImage(withContentsOf: fileURL, width: kThumbnailWidth) {
                         OperationQueue.main.addOperation({(_: Void) -> Void in
                             mutableEntry[kSuggestionImage] = thumbnailImage
                         })
@@ -145,167 +306,7 @@ class SuggestionsWindowController: NSWindowController {
         winFrame.size.height = contentFrame!.height
         window?.setFrame(winFrame, display: true)
     }
-    init() {
-        let contentRec = NSRect(x: 0, y: 0, width: 20, height: 20)
-        let window = SuggestionsWindow(contentRect: contentRec, defer: true)
-        super.init(window: window)
 
-        // SuggestionsWindow is a transparent window, create RoundedCornersView and set it as the content view to draw a menu like window.
-        let contentView = RoundedCornersView(frame: contentRec)
-        window.contentView = contentView
-        contentView.autoresizesSubviews = false
-        isNeedsLayoutUpdate = true
-
-    }
-
-    required init?(coder: NSCoder) {
-        super.init(coder: coder)
-    }
-    deinit {
-    }
-    /* Custom selectedView property setter so that we can set the highlighted property of the old and new selected views.
-     */
-    /* Set selected view and send action
-     */
-    func userSetSelectedView(_ view: NSView?) {
-        selectedView = view
-        NSApp.sendAction(action!, to: target, from: self)
-    }
-    /* Position and lay out the suggestions window, set up auto cancelling tracking, and wires up the logical relationship for accessibility.
-     */
-    func begin(for parentTextField: NSTextField?) {
-        let suggestionWindow: NSWindow? = window
-        let parentWindow: NSWindow? = parentTextField?.window
-        let parentFrame: NSRect? = parentTextField?.frame
-        var frame: NSRect? = suggestionWindow?.frame
-        frame?.size.width = (parentFrame?.size.width)!
-        // Place the suggestion window just underneath the text field and make it the same width as th text field.
-        var location = parentTextField?.superview?.convert(parentFrame?.origin ?? NSPoint.zero, to: nil)
-        location = parentWindow?.convertToScreen(NSRect(x: location!.x, y: location!.y, width: 0, height: 0)).origin
-        location?.y -= 2.0
-        // nudge the suggestion window down so it doesn't overlapp the parent view
-        suggestionWindow?.setFrame(frame ?? NSRect.zero, display: false)
-        suggestionWindow?.setFrameTopLeftPoint(location ?? NSPoint.zero)
-        layoutSuggestions()
-        // The height of the window will be adjusted in -layoutSuggestions.
-        // add the suggestion window as a child window so that it plays nice with Expose
-        if let aWindow = suggestionWindow {
-            parentWindow?.addChildWindow(aWindow, ordered: .above)
-        }
-        // keep track of the parent text field in case we need to commit or abort editing.
-        self.parentTextField = parentTextField
-        // The window must know its accessibility parent, the control must know the window one of its accessibility children
-        // Note that views (controls especially) are often ignored, so we want the unignored descendant - usually a cell
-        // Finally, post that we have created the unignored decendant of the suggestions window
-//        let unignoredAccessibilityDescendant = NSAccessibilityUnignoredDescendant(parentTextField!)
-//        (suggestionWindow as? SuggestionsWindow)?.parentElement = unignoredAccessibilityDescendant
-//        if unignoredAccessibilityDescendant.responds(to: Selector("setSuggestionsWindow:")) {
-//            unignoredAccessibilityDescendant.suggestionsWindow = suggestionWindow
-//        }
-//      NSAccessibilityPostNotification(NSAccessibilityUnignoredDescendant(suggestionWindow), .created)
-        // setup auto cancellation if the user clicks outside the suggestion window and parent text field. Note: this is a local event monitor and will only catch clicks in windows that belong to this application. We use another technique below to catch clicks in other application windows.
-        localMouseDownEventMonitor = NSEvent.addLocalMonitorForEvents(matching: [NSEvent.EventTypeMask.leftMouseDown, NSEvent.EventTypeMask.rightMouseDown, NSEvent.EventTypeMask.otherMouseDown], handler: {(_ event: NSEvent) -> NSEvent? in
-            // If the mouse event is in the suggestion window, then there is nothing to do.
-            var event: NSEvent! = event
-            if event.window != suggestionWindow {
-                if event.window == parentWindow {
-                    /* Clicks in the parent window should either be in the parent text field or dismiss the suggestions window. We want clicks to occur in the parent text field so that the user can move the caret or select the search text.
-                     
-                     Use hit testing to determine if the click is in the parent text field. Note: when editing an NSTextField, there is a field editor that covers the text field that is performing the actual editing. Therefore, we need to check for the field editor when doing hit testing.
-                     */
-                    let contentView: NSView? = parentWindow?.contentView
-                    let locationTest: NSPoint? = contentView?.convert(event.locationInWindow, from: nil)
-                    let hitView: NSView? = contentView?.hitTest(locationTest ?? NSPoint.zero)
-                    let fieldEditor: NSText? = parentTextField?.currentEditor()
-                    if hitView != parentTextField && ((fieldEditor != nil) && hitView != fieldEditor) {
-                        // Since the click is not in the parent text field, return nil, so the parent window does not try to process it, and cancel the suggestion window.
-                        event = nil
-                        self.cancelSuggestions()
-                    }
-                } else {
-                    // Not in the suggestion window, and not in the parent window. This must be another window or palette for this application.
-                    self.cancelSuggestions()
-                }
-            }
-            return event
-        })
-        // as per the documentation, do not retain event monitors.
-        // We also need to auto cancel when the window loses key status. This may be done via a mouse click in another window, or via the keyboard (cmd-~ or cmd-tab), or a notificaiton. Observing NSWindowDidResignKeyNotification catches all of these cases and the mouse down event monitor catches the other cases.
-        lostFocusObserver = NotificationCenter.default.addObserver(forName: NSWindow.didResignKeyNotification, object: parentWindow, queue: nil, using: {(_ arg1: Notification) -> Void in
-            // lost key status, cancel the suggestion window
-            self.cancelSuggestions()
-        })
-    }
-    /* Order out the suggestion window, disconnect the accessibility logical relationship and dismantle any observers for auto cancel.
-     Note: It is safe to call this method even if the suggestions window is not currently visible.
-     */
-    func cancelSuggestions() {
-        let suggestionWindow: NSWindow? = window
-        if suggestionWindow?.isVisible ?? false {
-            // Remove the suggestion window from parent window's child window collection before ordering out or the parent window will get ordered out with the suggestion window.
-            if let aWindow = suggestionWindow {
-                suggestionWindow?.parent?.removeChildWindow(aWindow)
-            }
-            suggestionWindow?.orderOut(nil)
-            // Disconnect the accessibility parent/child relationship
-            //            (suggestionWindow as? SuggestionsWindow)?.parentElement.suggestionsWindow = nil
-            (suggestionWindow as? SuggestionsWindow)?.parentElement = nil
-        }
-        // dismantle any observers for auto cancel
-        if lostFocusObserver != nil {
-            NotificationCenter.default.removeObserver(lostFocusObserver!)
-            lostFocusObserver = nil
-        }
-        if localMouseDownEventMonitor != nil {
-            NSEvent.removeMonitor(localMouseDownEventMonitor!)
-            localMouseDownEventMonitor = nil
-        }
-    }
-    /* Update the array of suggestions. The array should consist of NSDictionaries each containing the following keys:
-        kSuggestionImageURL - The URL to an image file
-        kSuggestionLabel - The main suggestion string
-        kSuggestionDetailedLabel - A longer string that provides more detail about the suggestion
-        kSuggestionImage - [optional] The image to show in the suggestion thumbnail. If this key is not provided, a thumbnail image will be created in a background que.
-     */
-    func setSuggestions(_ suggestions: [[String: Any]]?) {
-        self.suggestions = suggestions!
-        // We only need to update the layout if the window is currently visible.
-        if (window?.isVisible)! {
-            layoutSuggestions()
-        }
-    }
-    /* Returns the dictionary of the currently selected suggestion.
-     */
-    func selectedSuggestion() -> [String: Any]? {
-        var suggestion: Any? = nil
-        // Find the currently selected view's controller (if there is one) and return the representedObject which is the NSMutableDictionary that was passed in via -setSuggestions:
-        let selectedView: NSView? = self.selectedView
-        for viewController: NSViewController in viewControllers where selectedView == viewController.view {
-            suggestion = viewController.representedObject
-            break
-        }
-        return suggestion as? [String: Any]
-    }
-    // MARK: -
-    // MARK: Mouse Tracking
-    /* Mouse tracking is easily accomplished via tracking areas. We setup a tracking area for suggestion view and watch as the mouse moves in and out of those tracking areas.
-     */
-    /* Properly creates a tracking area for an image view.
-     */
-    func trackingArea(for view: NSView?) -> Any? {
-        // make tracking data (to be stored in NSTrackingArea's userInfo) so we can later determine the imageView without hit testing
-        var trackerData: [AnyHashable: Any]? = nil
-        if let aView = view {
-            trackerData = [
-                kTrackerKey: aView
-            ]
-        }
-        let trackingRect: NSRect = window!.contentView!.convert(view?.bounds ?? CGRect.zero, from: view)
-        let trackingOptions: NSTrackingArea.Options = [.enabledDuringMouseDrag, .mouseEnteredAndExited, .activeInActiveApp]
-        let trackingArea = NSTrackingArea(rect: trackingRect, options: trackingOptions, owner: self, userInfo: trackerData)
-        return trackingArea
-    }
-    // Creates suggestion views from suggestionprototype.xib for every suggestion and resize the suggestion window accordingly. Also creates a thumbnail image on a backgroung aue.
     /* The mouse is now over one of our child image views. Update selection and send action.
      */
     override func mouseEntered(with event: NSEvent) {
@@ -317,11 +318,13 @@ class SuggestionsWindowController: NSWindowController {
         }
         userSetSelectedView(view)
     }
+
     /* The mouse has left one of our child image views. Set the selection to no selection and send action
      */
     override func mouseExited(with event: NSEvent) {
         userSetSelectedView(nil)
     }
+
     /* The user released the mouse button. Force the parent text field to send its return action. Notice that there is no mouseDown: implementation. That is because the user may hold the mouse down and drag into another view.
      */
     override func mouseUp(with theEvent: NSEvent) {
@@ -330,6 +333,7 @@ class SuggestionsWindowController: NSWindowController {
         parentTextField?.sendAction(parentTextField?.action, to: parentTextField?.target)
         cancelSuggestions()
     }
+
     // MARK: -
     // MARK: Keyboard Tracking
     /* In addition to tracking the mouse, we want to allow changing our selection via the keyboard. However, the suggestion window never gets key focus as the key focus remains on te text field. Therefore we need to route move up and move down action commands from the text field and this controller. See CustomMenuAppDelegate.m -control:textView:doCommandBySelector: to see how that is done.
@@ -366,7 +370,4 @@ class SuggestionsWindowController: NSWindowController {
             userSetSelectedView(previousView)
         }
     }
-
-    let kTrackerKey = "whichImageView"
-    let kThumbnailWidth: CGFloat = 24.0
 }

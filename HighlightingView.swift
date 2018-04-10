@@ -72,12 +72,16 @@ class HighlightingView: NSView {
     /* This view groups the contents of one suggestion.  It should be exposed to accessibility, and should report itself with the role 'AXGroup'.  Because this is an NSView subclass, most of the basic accessibility behavior (accessibility parent, children, size, position, window, and more) is inherited from NSView.  Note that even the role description attribute will update accordingly and its behavior does not need to be overridden.
      */
     // Make sure we are reported by accessibility.
-    override public func isAccessibilityEnabled() -> Bool {
-        return true
+    override func accessibilityIsIgnored() -> Bool {
+        return false
     }
 
     // When asked for the value of our role attribute, return the group role.  For other attributes, use the inherited behavior of NSView.
-    override public func accessibilityRole() -> NSAccessibilityRole? {
-        return .group
+    override func accessibilityAttributeValue(_ attribute: NSAccessibilityAttributeName) -> Any? {
+        if attribute == .role {
+            return NSAccessibilityRole.group
+        } else {
+            return super.accessibilityAttributeValue(attribute)
+        }
     }
 }

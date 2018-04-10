@@ -55,6 +55,7 @@ class SuggestionsWindow: NSWindow {
     convenience init(contentRect: NSRect, defer flag: Bool) {
         self.init(contentRect: contentRect, styleMask: .borderless, backing: .buffered, defer: true)
     }
+
     /*  We still need to override the NSWindow designated initializer to properly setup our custom window. This allows us to set the class of a window in IB to SuggestionWindow and still get the correct properties (borderless and transparent).
      */
     override init(contentRect: NSRect, styleMask style: NSWindow.StyleMask, backing backingStoreType: NSWindow.BackingStoreType, defer flag: Bool) {
@@ -72,12 +73,17 @@ class SuggestionsWindow: NSWindow {
     // MARK: Accessibility
     /* This window is acting as a popup menu of sorts.  Since this isn't semantically a window, we ignore it for accessibility purposes.  Similarly, the parent of this window is its logical parent in the parent window.  In this code sample, the text field, but essentially any UI element that is the logical 'parent' of the window.
      */
-    override public func isAccessibilityEnabled() -> Bool {
+    override func accessibilityIsIgnored() -> Bool {
         return true
     }
+
     /* If we are asked for our AXParent, return the unignored anscestor of our parent element
      */
-    override public func accessibilityParent() -> Any? {
-        return (parentElement != nil) ? NSAccessibilityUnignoredAncestor(parentElement!) : (nil as Any?)
+    override func accessibilityAttributeValue(_ attribute: NSAccessibilityAttributeName) -> Any? {
+        if attribute == .parent {
+            return (parentElement != nil) ? NSAccessibilityUnignoredAncestor(parentElement!): nil
+        } else {
+            return super.accessibilityAttributeValue(attribute)
+        }
     }
 }

@@ -42,9 +42,10 @@
 import Cocoa
 
 class ImagePickerMenuItemView: NSView {
-    /* These two properties are used to detemine which images to use and the current selection, if any. They me be set and interrogated manually, but in this sample code, they are bound to an NSDictionary in CustomMenusAppDelegate.m -setupImagesMenu.
-     */
-    private var _imageUrls = [URL]()
+    // key for dictionary in NSTrackingAreas's userInfo
+    let kTrackerKey = "whichImageView"
+    let kNoSelection = -1
+
     @IBOutlet var imageView1: NSImageView!
     @IBOutlet var imageView2: NSImageView!
     @IBOutlet var imageView3: NSImageView!
@@ -55,76 +56,67 @@ class ImagePickerMenuItemView: NSView {
     @IBOutlet var spinner4: NSProgressIndicator!
     private var imageViews = [NSImageView]()
     private var spinners = [NSProgressIndicator]()
-    private var _trackingAreas = [NSTrackingArea]()
+    internal var trackingAreasList = [NSTrackingArea]()
     private var thumbnailsNeedUpdate = false
 
-    /* declare the selectedIndex property in an anonymous category since it is a private property
-     */
-    private var _selectedIndex: Int = 0
-    var selectedIndex: Int {
-        get {
-            return _selectedIndex
-        }
-        set(index) {
-            if _selectedIndex != index {
-                _selectedIndex = index
-            }
-            needsDisplay = true
-        }
-    }
-    // key for dictionary in NSTrackingAreas's userInfo
-    let kTrackerKey = "whichImageView"
-    let kNoSelection = -1
     /* Make sure that any key value observer of selectedImageUrl is notified when change our internal selected index.
      Note: Internally, keep track of a selected index so that we can eaasily refer to the imageView spinner and URL associated with index. Externally, supply only a selected URL.
      */
     class func keyPathsForValuesAffectingSelectedImageUrl() -> Set<AnyHashable>? {
         return Set<AnyHashable>(["selectedIndex"])
     }
+
     override init(frame: NSRect) {
         super.init(frame: frame)
-
         selectedIndex = kNoSelection
-
     }
 
     required init?(coder decoder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
+
     /* Place all the image views and spinners (circular progress indicators) that are wired up in the nib into NSArrays. This dramtically reduces code allowing us to easily link image view, spinners and URL sets.
      */
     override func awakeFromNib() {
         imageViews = [imageView1, imageView2, imageView3, imageView4]
         spinners = [spinner1, spinner2, spinner3, spinner4]
     }
+
     deinit {
-        // tracking areas are removed from the view during dealloc, all we need to do is release our area of them
+        // tracking areas are removed from the view during deinit
     }
+
     /* Custom selectedIndex property setter so that we can be sure to redraw when the selection index changes.
      */
-    /* Custom selectedIndex property setter so that we can be sure to redraw when the image URLs change. Actually, we need to rebuild our thumbnail images, but we don't do that here because we may not even be visible at the moment. Instead, we mark an internal variable noting that the thumbnails need to be updated. see -viewWillDraw.
-     */
-    @objc public var imageUrls: [URL] {
-        get {
-            return _imageUrls
+    private var selectedIndex: Int = 0 {
+        didSet {
+            needsDisplay = true
         }
+    }
 
-        set(urls) {
-            _imageUrls = urls
+    /* These two properties are used to detemine which images to use and the current selection, if any. They me be set and interrogated manually, but in this sample code, they are bound to an NSDictionary in CustomMenusAppDelegate.m -setupImagesMenu.
+     */
+
+    /* Custom imageUrls property setter so that we can be sure to redraw when the image URLs change. Actually, we need to rebuild our thumbnail images, but we don't do that here because we may not even be visible at the moment. Instead, we mark an internal variable noting that the thumbnails need to be updated. see -viewWillDraw.
+     */
+    @objc public var imageUrls: [URL]! {
+        didSet {
             thumbnailsNeedUpdate = true
             needsDisplay = true
         }
     }
+
     /* We must create our own selectedImageUrl property getter as there is no underlying member variable to synthesize to. Simply, return URL from _imageUrls at the selected index.
      */
     @objc public var selectedImageUrl: URL? {
         var selectedURL: URL? = nil
         let index: Int = selectedIndex
-        if index >= 0 && index < Int(_imageUrls.count) {
-            selectedURL = _imageUrls[index]
+        if index >= 0 && index < Int(imageUrls.count) {
+            selectedURL = imageUrls[index]
         }
         return selectedURL
     }
+
     /* Do any last minute layout changes such as updating thumnails because we are about to draw. While we are waiting for the thumbnails to be generated, display animated spinners (circular progress indicators).
      */
     override func viewWillDraw() {
@@ -136,8 +128,8 @@ class ImagePickerMenuItemView: NSView {
             // animating progress indicators in menus can be tricky. We must wait until the menu window becomes key before starting the animation.
             let windowIsKey: Bool = window!.isKeyWindow
             // Generate the thumbnail for each image in the background
-            let imageUrls = self._imageUrls
-            for index in 0..<Int(imageUrls.count) {
+            let imageUrls = self.imageUrls!
+            for index in 0..<imageUrls.count {
                 let imageView = imageViews[index]
                 let imageUrl = imageUrls[index]
                 let spinner = spinners[index]
@@ -177,17 +169,19 @@ class ImagePickerMenuItemView: NSView {
         // It is very import to call up to super!
         super.viewWillDraw()
     }
+
     /* If there is a selection, fill a rect behind the selected image view. Since the image view is a subview of this view, it will look like a border around the image.
      */
     override func draw(_ dirtyRect: NSRect) {
         let index: Int = selectedIndex
-        if index >= 0 && index < Int(_imageUrls.count) {
+        if index >= 0 && index < imageUrls.count {
             let selectedImageView = imageViews[index]
             let frame: NSRect = convert(selectedImageView.bounds, from: selectedImageView).insetBy(dx: -4.0, dy: -4.0)
             NSColor.selectedMenuItemColor.set()
             frame.fill()
         }
     }
+
     /* As the window that contains the popup menu is created, the view associated with the menu item (this view) is added to the window. When the window is destroyed the view is removed from the window, but still retained by the menu item. A new window is created and destroyed each time a menu is displayed. This makes this method the ideal place to start and stop animations.
      */
     override func viewDidMoveToWindow() {
@@ -209,6 +203,7 @@ class ImagePickerMenuItemView: NSView {
             }
         }
     }
+
     /* Do everything associated with sending the action from user selection such as terminating menu tracking.
      */
     func sendAction() {
@@ -222,10 +217,12 @@ class ImagePickerMenuItemView: NSView {
         menu?.cancelTracking()
         needsDisplay = true
     }
+
     // MARK: -
     // MARK: Mouse Tracking
     /* Mouse tracking is easily accomplished via tracking areas. We setup a tracking area for each image view and watch as the mouse moves in and out of those tracking areas. When a mouse up occurs, we can send our action and close the menu.
      */
+
     /* Properly create a tracking area for an image view.
      */
     func trackingArea(for index: Int) -> NSTrackingArea {
@@ -240,28 +237,30 @@ class ImagePickerMenuItemView: NSView {
         let trackingArea = NSTrackingArea(rect: trackingRect, options: trackingOptions, owner: self, userInfo: trackerData)
         return trackingArea
     }
+
     /* The view is automatically asked to update the tracking areas at the appropriate time via this overridable methos. 
      */
     override func updateTrackingAreas() {
         // Remove any existing tracking areas
-        for trackingArea: NSTrackingArea in _trackingAreas {
+        for trackingArea: NSTrackingArea in trackingAreasList {
             removeTrackingArea(trackingArea)
         }
         var trackingArea: NSTrackingArea?
-        _trackingAreas.removeAll()
+        trackingAreasList.removeAll()
         // keep all tracking areas in an array
         /* Add a tracking area for each image view. We use an integer for-loop instead of fast enumeration because we need to link the tracking area to the index.
          */
-        for index in 0..<Int(imageViews.count) {
+        for index in 0..<imageViews.count {
             trackingArea = self.trackingArea(for: index)
             if let anArea = trackingArea {
-                _trackingAreas.append(anArea)
+                trackingAreasList.append(anArea)
             }
             if let anArea = trackingArea {
                 addTrackingArea(anArea)
             }
         }
     }
+
     /* The mouse is now over one of our child image views. Update selection.
      */
     override func mouseEntered(with event: NSEvent) {
@@ -272,25 +271,30 @@ class ImagePickerMenuItemView: NSView {
             selectedIndex = 0
         }
     }
+
     /* The mouse has left one of our child image views. Set the selection to no selection.
      */
     override func mouseExited(with event: NSEvent) {
         selectedIndex = kNoSelection
     }
+
     /* The user released the mouse button. Send the action and let the target ask for the selection. Notice that there is no mouseDown: implementation. This is because the user may have held the mouse down as the menu popped up. Or the user may click on this view, but drag into another menu item. That menu item needs to be able to start tracking the mouse. Therefore, we only keep track of our selection via the tracking areas and send our action to our target when the user releases the mouse button inside this view.
      */
     override func mouseUp(with event: NSEvent) {
         sendAction()
     }
+
     // MARK: -
     // MARK: Keyboard Tracking
     /* In addition to tracking the mouse, we want to allow changing our selection via the keyboard.
      */
+
     /* Must return YES from -acceptsFirstResponder or we will not get key events. By default NSView return NO.
      */
     func acceptsFirstResponder() -> Bool {
         return true
     }
+
     /* Set the selected index to the first image view if there is no current selection. We check for a current selection because a mouse down inside a child image view will cause this method to be called and we don't want to change the user's mouse selection.
      */
     override func becomeFirstResponder() -> Bool {
@@ -299,12 +303,14 @@ class ImagePickerMenuItemView: NSView {
         }
         return true
     }
+
     /* We will lose first responder status when the user arrows up or down, or when the menu window is destroyed. If the user keyboard navigates to another NSMenuItem then remove any selection, and if the menu window is destroyed, then the selection no longer matters.
      */
     override func resignFirstResponder() -> Bool {
         selectedIndex = kNoSelection
         return true
     }
+
     /* Do the normal AppKit behavior of calling interpretKeyEvents: to allow the input manager to determine the correct keybinding. It is important to call up to super so that user can navigate to other menu items
      */
     override func keyDown(with event: NSEvent?) {
@@ -313,6 +319,7 @@ class ImagePickerMenuItemView: NSView {
             super.keyDown(with: anEvent)
         }
     }
+
     /* Catch the commands interpreted by interpretKeyEvents:. Normally, if we don't implement (or any other view in the hierarchy implements) the selector, the system beeps. Menu navigation generally doesn't beep, so stop doCommandBySelector: from calling up the hierarchy just to stop the beep.
      */
     override func doCommand(by selector: Selector) {
@@ -322,13 +329,15 @@ class ImagePickerMenuItemView: NSView {
         // do nothing, let the menu handle it (see call to super in -keyDown:)
         // But don't call super to prevent the system beep
     }
+
     /* move the selection to the right
      */
     @objc override func moveRight(_ sender: Any?) {
         var index: Int = selectedIndex + 1
-        index = min(index, Int(_imageUrls.count) - 1)
+        index = min(index, Int(imageUrls.count) - 1)
         selectedIndex = index
     }
+
     /* move the selection to the left
      */
     @objc override func moveLeft(_ sender: Any?) {
@@ -336,21 +345,25 @@ class ImagePickerMenuItemView: NSView {
         index = max(0, index)
         selectedIndex = index
     }
+
     /* move the selection to index 0
      */
     @objc func moveToBeginningOfLine(sender: Any?) {
         selectedIndex = 0
     }
+
     /* move the selection to the greatest valid index
      */
     @objc func moveToEndOfLine(sender: Any?) {
-        selectedIndex = _imageUrls.count - 1
+        selectedIndex = imageUrls.count - 1
     }
+
     /* The user pressed return or equivilent, send the action
      */
     @objc override func insertNewline(_ sender: Any?) {
         sendAction()
     }
+
     /* The key event was not interpreted as a command, so interpretKeyEvents: calls this method. In tis case, we want to check for space, because space is also used to select a menu item.
      */
     override func insertText(_ insertString: Any) {

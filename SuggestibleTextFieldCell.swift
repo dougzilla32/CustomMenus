@@ -43,6 +43,7 @@ import Cocoa
 
 class SuggestibleTextFieldCell: NSTextFieldCell {
     var suggestionsWindow: NSWindow?
+
     /* Force NSTextFieldCell to use white as the text color when drawing on a dark background. NSTextField does this by default when the text color is set to black. In the suggestionsprototype.xib, there is an NSTextField that has a blueish text color. In IB we set the cell of that text field to this class to get the drawing behavior we want.
      */
     override func draw(withFrame cellFrame: NSRect, in controlView: NSView) {
@@ -54,27 +55,24 @@ class SuggestibleTextFieldCell: NSTextFieldCell {
 
         self.textColor = textColor
     }
+
     // MARK: -
     // MARK: Accessibility
     // Make sure we are reported by accessibility.
-    override public func isAccessibilityEnabled() -> Bool {
-        return true
+    override func accessibilityIsIgnored() -> Bool {
+        return false
     }
 
     /* The search text field in the MainMenu.xib has the class for its cell set to this class so that it will report the suggestions window as one of its accessibility children when the suggestions window is present.
      */
-    override func accessibilityChildren() -> [Any]? {
-        var children: [Any]?
-        if suggestionsWindow != nil {
-            if let anAttribute = super.accessibilityChildren() {
-                children = anAttribute
-                if let descendant = NSAccessibilityUnignoredDescendant(suggestionsWindow!) {
-                    children = children! + [descendant]
-                }
-            }
+    override func accessibilityAttributeValue(_ attribute: NSAccessibilityAttributeName) -> Any? {
+        if attribute == .children,
+            let parentWindow = suggestionsWindow,
+            let children = super.accessibilityAttributeValue(.children) as? [Any],
+            let descendant = NSAccessibilityUnignoredDescendant(parentWindow) {
+            return children + [descendant]
         } else {
-            children = super.accessibilityChildren()
+            return super.accessibilityAttributeValue(attribute)
         }
-        return children
     }
 }

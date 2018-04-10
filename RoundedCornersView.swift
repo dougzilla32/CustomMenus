@@ -51,9 +51,7 @@ class RoundedCornersView: NSView {
 
     override init(frame: NSRect) {
         super.init(frame: frame)
-
         rcvCornerRadius = 10.0
-
     }
 
     override func draw(_ dirtyRect: NSRect) {
@@ -62,14 +60,13 @@ class RoundedCornersView: NSView {
         NSColor.windowBackgroundColor.setFill()
         borderPath.fill()
     }
-    
+
     override var isFlipped: Bool {
         return true
     }
 
-    /*
-// MARK: -
-// MARK: Accessibility
+    // MARK: -
+    // MARK: Accessibility
     /* This view contains the list of selections.  It should be exposed to accessibility, and should report itself with the role 'AXList'.  Because this is an NSView subclass, most of the basic accessibility behavior (accessibility parent, children, size, position, window, and more) is inherited from NSView.  Note that even the role description attribute will update accordingly and its behavior does not need to be overridden.  However, since the role AXList has a number of additional required attributes, we need to declare them and implement them.
      */
     /* Make sure we are reported by accessibility.  NSView's default return value is YES.
@@ -77,9 +74,10 @@ class RoundedCornersView: NSView {
     override func accessibilityIsIgnored() -> Bool {
         return false
     }
+
     /* The suggestions will be an AXList of suggestions.  AXList requires additional attributes beyond what NSView provides.
      */
-    func accessibilityAttributeNames() -> [Any]? {
+    override func accessibilityAttributeNames() -> [NSAccessibilityAttributeName] {
         var attributeNames = super.accessibilityAttributeNames()
         attributeNames.append(.orientation)
         attributeNames.append(.enabled)
@@ -87,66 +85,64 @@ class RoundedCornersView: NSView {
         attributeNames.append(.selectedChildren)
         return attributeNames
     }
+
     /* Return a different value for the role attribute, and the values for the additional attributes declared above.
      */
-    override func accessibilityAttributeValue(_ attribute: NSAccessibilityAttributeName?) -> Any? {
+    override func accessibilityAttributeValue(_ attribute: NSAccessibilityAttributeName) -> Any? {
         // Report our role as AXList
-        if (attribute == .role) {
+        if attribute == .role {
             return NSAccessibilityRole.list
             // Our orientation is vertical
-        }
-        else if (attribute == .orientation) {
+        } else if attribute == .orientation {
             return NSAccessibilityOrientation.vertical
             // The list is always enabled
-        }
-        else if (attribute == .enabled) {
+        } else if attribute == .enabled {
             return 1
             // There is no scroll bar in this example - all children are always visible
-        }
-        else if (attribute == .visibleChildren) {
+        } else if attribute == .visibleChildren {
             return accessibilityAttributeValue(.children)
             // Run through children, and if they respond to 'isHighlighted' put them in the list
-        }
-        else if (attribute == .selectedChildren) {
+        } else if attribute == .selectedChildren {
             var selectedChildren = [AnyHashable]()
-            for element: Any in (NSObject.accessibilityAttributeValue(.children) as! Array<Any>) {
-                if (element as AnyObject).responds(to: #selector(self.isHighlighted)) && element.isHighlighted() {
-                    selectedChildren.append(element as! AnyHashable)
+            if let accessibilityChildren = NSObject.accessibilityAttributeValue(.children) as? [Any] {
+                for element: Any in accessibilityChildren {
+                    if let control = element as? NSControl {
+                        if control.isHighlighted {
+                            selectedChildren.append(control)
+                        }
+                    }
                 }
             }
             return selectedChildren
             // Otherwise, return what super returns
-        }
-        else {
-            return super.accessibilityAttributeValue(NSAccessibilityAttributeName(rawValue: attribute!.rawValue))
+        } else {
+            return super.accessibilityAttributeValue(attribute)
         }
     }
+
     /* In addition to reporting the value for an attribute, we need to return whether value of the attribute can be set.
      */
-    func accessibilityIsAttributeSettable(_ attribute: String?) -> Bool {
+    override func accessibilityIsAttributeSettable(_ attribute: NSAccessibilityAttributeName) -> Bool {
         // Three of the four attributes we added are not settable
-        if (attribute == .orientation) || (attribute == .enabled) || (attribute == .visibleChildren) || (attribute == .selectedChildren) {
+        if attribute == .orientation || attribute == .enabled || attribute == .visibleChildren || attribute == .selectedChildren {
             return false
-        }
-        else if (attribute == .selectedChildren) {
+        } else if attribute == .selectedChildren {
             return true
             // Otherwise, return what super returns
-        }
-        else {
-            return super.accessibilityIsAttributeSettable(NSAccessibilityAttributeName(attribute))
+        } else {
+            return super.accessibilityIsAttributeSettable(attribute)
         }
     }
-    func accessibilitySetValue(_ value: Any?, forAttribute attribute: NSAccessibilityAttributeName) {
-        if (attribute == .selectedChildren) {
-            var windowController: NSWindowController? = window().windowController
+
+    override func accessibilitySetValue(_ value: Any?, forAttribute attribute: NSAccessibilityAttributeName) {
+        if attribute == .selectedChildren {
+            let windowController: NSWindowController? = window?.windowController
             if windowController != nil {
                 // Our subclass of NSWindowController has a selectedView property
                 windowController?.setValue(value, forKey: "selectedView")
             }
-        }
-        else {
-            super.accessibilitySetValue(value, forAttribute: NSAccessibilityAttributeName(attribute))
+        } else {
+            super.accessibilitySetValue(value, forAttribute: attribute)
         }
     }
-    */
 }
