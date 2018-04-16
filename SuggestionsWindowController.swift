@@ -120,12 +120,12 @@ class SuggestionsWindowController: NSWindowController {
         // The window must know its accessibility parent, the control must know the window one of its accessibility children
         // Note that views (controls especially) are often ignored, so we want the unignored descendant - usually a cell
         // Finally, post that we have created the unignored decendant of the suggestions window
-        //        let unignoredAccessibilityDescendant = NSAccessibilityUnignoredDescendant(parentTextField!)
-        //        (suggestionWindow as? SuggestionsWindow)?.parentElement = unignoredAccessibilityDescendant
-        //        if unignoredAccessibilityDescendant.responds(to: Selector("setSuggestionsWindow:")) {
-        //            unignoredAccessibilityDescendant.suggestionsWindow = suggestionWindow
-        //        }
-        //      NSAccessibilityPostNotification(NSAccessibilityUnignoredDescendant(suggestionWindow), .created)
+        let unignoredAccessibilityDescendant = NSAccessibilityUnignoredDescendant(parentTextField!)
+        (suggestionWindow as? SuggestionsWindow)?.parentElement = unignoredAccessibilityDescendant
+        (unignoredAccessibilityDescendant as? SuggestibleTextFieldCell)?.suggestionsWindow = suggestionWindow
+        if let win = suggestionWindow, let winD = NSAccessibilityUnignoredDescendant(win) {
+            NSAccessibilityPostNotification(winD, .created)
+        }
         // setup auto cancellation if the user clicks outside the suggestion window and parent text field. Note: this is a local event monitor and will only catch clicks in windows that belong to this application. We use another technique below to catch clicks in other application windows.
         localMouseDownEventMonitor = NSEvent.addLocalMonitorForEvents(matching: [NSEvent.EventTypeMask.leftMouseDown, NSEvent.EventTypeMask.rightMouseDown, NSEvent.EventTypeMask.otherMouseDown], handler: {(_ event: NSEvent) -> NSEvent? in
             // If the mouse event is in the suggestion window, then there is nothing to do.
@@ -172,7 +172,7 @@ class SuggestionsWindowController: NSWindowController {
             }
             suggestionWindow?.orderOut(nil)
             // Disconnect the accessibility parent/child relationship
-            //            (suggestionWindow as? SuggestionsWindow)?.parentElement.suggestionsWindow = nil
+            ((suggestionWindow as? SuggestionsWindow)?.parentElement as? SuggestibleTextFieldCell)?.suggestionsWindow = nil
             (suggestionWindow as? SuggestionsWindow)?.parentElement = nil
         }
         // dismantle any observers for auto cancel
